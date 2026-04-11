@@ -10,7 +10,7 @@ override fun onCreate(savedInstanceState:Bundle?){
 super.onCreate(savedInstanceState)
 
 val tv=TextView(this)
-tv.text="MY CLEAN APP"
+tv.text="APP READY"
 
 setContentView(tv)
 }
