@@ -1,0 +1,80 @@
+name: Build LFM3 NPU APK
+
+on:
+  push:
+    branches:
+      - lfm3-npu-test
+    paths:
+      - .github/workflows/build-lfm3.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android components
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Fetch Qualcomm GenieX Chat
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/qualcomm/ai-hub-apps.git "$RUNNER_TEMP/ai-hub-apps"
+          git -C "$RUNNER_TEMP/ai-hub-apps" sparse-checkout set apps/geniex_chat_android
+          echo "APP_DIR=$RUNNER_TEMP/ai-hub-apps/apps/geniex_chat_android" >> "$GITHUB_ENV"
+
+      - name: Add LFM3-1.7B Q4_0
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["APP_DIR"]) / "src/main/assets/model_list.json"
+          models = json.loads(path.read_text())
+          models = [m for m in models if m.get("id") != "LFM3-1.7B-GGUF"]
+          models.insert(0, {
+              "id": "LFM3-1.7B-GGUF",
+              "displayName": "LFM3-1.7B (Q4_0 · Hexagon NPU)",
+              "modelName": "LiquidAI/LFM3-1.7B-GGUF",
+              "quant": "Q4_0",
+              "hub": "HUGGINGFACE",
+              "type": "chat",
+              "runtime": "llama_cpp"
+          })
+          path.write_text(json.dumps(models, indent=2) + "\n")
+          PY
+
+      - name: Build APK
+        working-directory: ${{ env.APP_DIR }}
+        run: gradle --no-daemon assembleDebug
+
+      - name: Verify APK
+        run: test -s "$APP_DIR/build/outputs/apk/debug/app-debug.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LFM3-NPU-APK
+          path: ${{ env.APP_DIR }}/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
