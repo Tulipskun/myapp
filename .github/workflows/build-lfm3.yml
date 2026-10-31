@@ -43,7 +43,7 @@ jobs:
       - name: Fetch Qualcomm GenieX Chat
         run: |
           git clone --depth 1 --filter=blob:none --sparse --branch main https://github.com/qualcomm/ai-hub-apps.git "$RUNNER_TEMP/ai-hub-apps"
-          git -C "$RUNNER_TEMP/ai-hub-apps" sparse-checkout set apps/geniex_chat_android
+          git -C "$RUNNER_TEMP/ai-hub-apps" sparse-checkout set apps/geniex_chat_android apps/_shared
           echo "APP_DIR=$RUNNER_TEMP/ai-hub-apps/apps/geniex_chat_android" >> "$GITHUB_ENV"
 
       - name: Add LFM3-1.7B Q4_0
