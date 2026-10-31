@@ -1,5 +1,7 @@
 name: Build LFM3 NPU APK
 
+# Android SDK components are installed explicitly below.
+
 on:
   push:
     branches:
